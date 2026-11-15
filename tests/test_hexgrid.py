@@ -18,7 +18,7 @@ WORLD_DIR = ROOT / "core" / "static" / "world"
 
 
 class HexGridTest(unittest.TestCase):
-    def test_cell_counts_match_poc(self):
+    def test_cell_counts_match_grid(self):
         self.assertEqual(len(cells(4)), 162)  # regions
         self.assertEqual(len(cells(56)), 31362)
         self.assertEqual(len(cells(80)), 64002)

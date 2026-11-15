@@ -1,7 +1,7 @@
 """GIBS global-image extraction and regional aggregation.
 
 The extractor takes one global WMS image per layer/date, maps rendered colors
-to values using curated palettes, and aggregates the 162 POC regions with
+to values using curated palettes, and aggregates the 162 Milanko regions with
 area weights. It is deliberately independent from FastAPI and PostgreSQL.
 """
 from __future__ import annotations

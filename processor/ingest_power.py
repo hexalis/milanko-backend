@@ -1,4 +1,4 @@
-"""POWER ingestion: 162 POC regions, 36 core variables, daily 2006+.
+"""POWER ingestion: 162 Milanko regions, 36 core variables, daily 2006+.
 
 The job is intentionally resumable at the location level: every location is
 upserted independently. Re-running the command is safe.
@@ -57,7 +57,7 @@ def seed_catalog() -> None:
 
 
 def _region_elevations() -> dict[int, float]:
-    """Mean world-base elevation per POC region, used for POWER PSC."""
+    """Mean world-base elevation per Milanko region, used for POWER PSC."""
     _, records, grid = world_base(80)
     sums: dict[int, float] = {}
     counts: dict[int, int] = {}

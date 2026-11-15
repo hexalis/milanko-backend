@@ -35,7 +35,8 @@ from core.models import (
     Variable,
 )
 
-GRID_VERSION = "poc-hex-162-2048x1024-v1"
+# Legacy grid identifier stored in PostgreSQL; keep it stable.
+GRID_VERSION = "milanko-hex-162-2048x1024-v1"
 METHOD_VERSION = "gibs-global-2048-v1"
 PALETTE_VERSION = load_palettes()["version"]
 SOURCE = "NASA GIBS"
@@ -132,7 +133,7 @@ def seed_catalog() -> None:
             session.add(
                 Location(
                     slug=slug,
-                    name=f"POC hex region {region_code:03d}",
+                    name=f"Milanko region {region_code:03d}",
                     kind="hex_region",
                     grid_version=GRID_VERSION,
                     region_code=region_code,

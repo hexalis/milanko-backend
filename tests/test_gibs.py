@@ -38,7 +38,7 @@ class GibsCapabilitiesTest(unittest.TestCase):
 @unittest.skipUnless(HAS_PIL, "Pillow no disponible en este intérprete")
 class GibsDecodeTest(unittest.TestCase):
     def test_fire_palette(self):
-        png = (SAMPLES / "gibs" / "wms" / "poc_termico_africa.png").read_bytes()
+        png = (SAMPLES / "gibs" / "wms" / "gibs_termico_africa.png").read_bytes()
         counts = GibsClient.decode_palette(png, FIRE_RGBA)
         self.assertGreater(counts["fire"], 0)
         self.assertFalse(GibsClient.is_blank(png))
@@ -46,13 +46,13 @@ class GibsDecodeTest(unittest.TestCase):
         self.assertGreater(len(palette), 0)
 
     def test_flood_palette(self):
-        png = (SAMPLES / "gibs" / "wms" / "poc_inundacion_bangladesh.png").read_bytes()
+        png = (SAMPLES / "gibs" / "wms" / "gibs_inundacion_bangladesh.png").read_bytes()
         counts = GibsClient.decode_palette(png, FLOOD_RGBA)
         self.assertGreater(counts["flood_water"], 0)
         self.assertGreater(counts["reference"], 0)
 
     def test_blank_detection(self):
-        blank = (SAMPLES / "gibs" / "wms" / "poc_hielo_marino_antartico.png").read_bytes()
+        blank = (SAMPLES / "gibs" / "wms" / "gibs_hielo_marino_antartico.png").read_bytes()
         self.assertTrue(GibsClient.is_blank(blank))
         image = Image.new("RGBA", (4, 4), (0, 0, 0, 0))
         buffer = io.BytesIO()

@@ -1,6 +1,6 @@
 # Data seed
 
-The three PostgreSQL databases were seeded from a fresh dump of the POC's
+The three PostgreSQL databases were seeded from a fresh dump of the legacy
 `hexalis_develop` database on 2026-11-15.
 
 ## Current contents

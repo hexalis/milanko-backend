@@ -93,14 +93,6 @@ sudo certbot certonly --webroot -w /var/www/html \
 
 Cloudflare SSL/TLS mode should be **Full (strict)**.
 
-The POC remains on the old VPS with its own certificate:
-
-| Environment | URL |
-|---|---|
-| develop | `https://dev-milanko-poc.hexalis.org` |
-| qa | `https://qa-milanko-poc.hexalis.org` |
-| production | `https://milanko-poc.hexalis.org` |
-
 ## DNS
 
 Create these proxied `A` records in Cloudflare:
@@ -110,9 +102,6 @@ Create these proxied `A` records in Cloudflare:
 | `dev-milanko` | new VPS |
 | `qa-milanko` | new VPS |
 | `milanko` | new VPS |
-| `dev-milanko-poc` | old VPS |
-| `qa-milanko-poc` | old VPS |
-| `milanko-poc` | old VPS |
 
 ## GitHub Environments
 

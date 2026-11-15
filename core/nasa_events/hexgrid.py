@@ -1,6 +1,6 @@
 """Geodesic hexagonal grid (Goldberg polyhedron) and hex binning.
 
-Python port of the POC's `world3d/grid.js` (portal repo), so cell codes match the
+Python port of the Milanko `world3d/grid.js`, so cell codes match the
 globe/3D world exactly (same cells, same regions, same geometry).
 
 Grid facts

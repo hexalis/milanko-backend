@@ -1,4 +1,4 @@
-"""Reader for the POC's ETDW world-base binaries (planet appearance layer).
+"""Reader for the ETDW world-base binaries (planet appearance layer).
 
 Format (from portal/world3d/grid.js + scripts/build_world.mjs):
   Header (16 bytes, little-endian):

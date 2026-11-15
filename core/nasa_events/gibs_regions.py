@@ -1,7 +1,7 @@
 """Precomputed pixel-to-region mask for GIBS global images.
 
 The mask maps every pixel of a 2048x1024 EPSG:4326 image to one of the 162
-geodesic regions used by the POC. It also stores cos(latitude) so a regional
+geodesic regions used by Milanko. It also stores cos(latitude) so a regional
 mean can be area-weighted.
 """
 from __future__ import annotations
@@ -14,7 +14,8 @@ import numpy as np
 from .config import CACHE_DIR
 from .hexgrid import region_centres
 
-GRID_VERSION = "poc-hex-162-2048x1024-v1"
+# Legacy grid identifier stored in PostgreSQL; keep it stable.
+GRID_VERSION = "milanko-hex-162-2048x1024-v1"
 REGION_COUNT = 162
 DEFAULT_WIDTH = 2048
 DEFAULT_HEIGHT = 1024

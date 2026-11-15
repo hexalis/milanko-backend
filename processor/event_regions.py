@@ -1,4 +1,4 @@
-"""Assign EONET geometries to the 162 POC regions.
+"""Assign EONET geometries to the 162 Milanko regions.
 
 The regions are the frequency-4 cells of the geodesic grid; a point belongs to
 the region whose centre is nearest. Lines and polygons are flattened to their
