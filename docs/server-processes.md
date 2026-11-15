@@ -77,7 +77,11 @@ reachable through the `milanko` network.
 │   └── production/
 ├── dumps/              # compressed pg_dump files, owned by deploy
 ├── frontend/
-│   ├── develop/        # static placeholder / static export output
+│   ├── develop/        # fallback placeholder when the app container is down
+│   ├── qa/
+│   └── production/
+├── landing/
+│   ├── develop/        # Astro landing: / and /en/
 │   ├── qa/
 │   └── production/
 └── postgres/           # (reserved; PostgreSQL uses a named volume)
@@ -120,7 +124,7 @@ Containers attached:
 | `milanko-api-qa` | API QA | internal + `127.0.0.1:8012` |
 | `milanko-api-production` | API production | internal + `127.0.0.1:8013` |
 | `milanko-ingest-<env>-<job>` | one-off worker | internal, `--rm` |
-| `milanko-web-<env>` | future Next.js server | internal + `127.0.0.1:8021–8023` |
+| `milanko-web-<env>` | Next.js server (`/app`) | internal + `127.0.0.1:8021–8023` |
 
 The API and PostgreSQL are not published on a public interface. The frontend
 server will be reachable only from nginx.
@@ -333,19 +337,17 @@ accept `secrets.DEPLOY_HOST || vars.DEPLOY_HOST`.
 
 - `sites-available/milanko` has one HTTPS server block per environment and a
   catch-all `return 444`.
-- `/api/v1/` and `/api/` proxy to the API port of that environment; the API key
-  is validated before proxying.
-- Public exceptions: `/api/v1/health`, `/docs`, `/redoc`,
-  `/openapi.json`, and `OPTIONS` (CORS preflight).
-- Rate limits: 20 r/s per real client IP, 10 r/s per API key; burst 40/20;
-  20 concurrent connections per IP.
+- `/api/v1/` and `/api/` proxy to the API port of that environment. The API
+  key maps and rate-limit zones remain installed, but the site currently does
+  not apply them (temporarily disabled).
 - Cloudflare real IP ranges are loaded from
   `/etc/nginx/snippets/cloudflare-realip.conf`.
 - TLS is Let's Encrypt with the HTTP-01 webroot challenge; Cloudflare forwards
   `/.well-known/acme-challenge/` to the origin. Renewal is automatic.
-- nginx root proxies to the frontend container on `127.0.0.1:8021` (develop),
-  `8022` (qa) or `8023` (production). If the container is down, nginx serves
-  `/srv/milanko/frontend/<env>/index.html` through
+- `/` and `/en/` are static files from `/srv/milanko/landing/<env>`.
+- `/app` and `/app/` proxy to the frontend container on `127.0.0.1:8021`
+  (develop), `8022` (qa) or `8023` (production). If the container is down,
+  nginx serves `/srv/milanko/frontend/<env>/index.html` through
   `error_page 502 503 504 = @frontend_placeholder_<env>` instead of returning a
   502. This lets the frontend deploy and restart without a public outage.
 
@@ -528,12 +530,14 @@ manual rollback.
 - [ ] `journalctl` and `ingest_runs` show the first successful run.
 - [ ] Disk, RAM, swap and Docker log rotation checked.
 
-## 14. Frontend process (target)
+## 14. Frontend process
 
-The current frontend code is a Next.js server with rewrites, not a static
-export. The target deployment is:
+The frontend is a Next.js server mounted at `/app`. GitHub Actions builds the
+standalone image, pushes it to `ghcr.io/hexalis/milanko-frontend-app:<env>` and the
+VPS only pulls it:
 
 ```bash
+docker pull ghcr.io/hexalis/milanko-frontend-app:<env>
 docker run -d \
   --name milanko-web-<env> \
   --restart unless-stopped \
@@ -542,19 +546,16 @@ docker run -d \
   --env-file /etc/milanko/frontend-<env>.env \
   --log-opt max-size=50m \
   --log-opt max-file=3 \
-  milanko-web:<env>
+  ghcr.io/hexalis/milanko-frontend-app:<env>
 ```
 
 - `MILANKO_API_URL` points to the internal API
   (`http://milanko-api-<env>:8000`), so server-side requests do not need the
   public API key.
-- If the frontend uses the public API URL instead, it must send
-  `X-API-Key: $MILANKO_API_KEY`.
-- nginx must proxy `/` to `127.0.0.1:<8021|8022|8023>` when the container is
-  deployed; today it serves the static placeholder.
-- If the team chooses a static export instead, remove the container variables
-  and publish the `out/` directory to `/srv/milanko/frontend/<env>`; the
-  frontend API key becomes public in the bundle.
+- nginx proxies `/app` and `/app/` to `127.0.0.1:<8021|8022|8023>`; `/` and
+  `/en/` are the static landing.
+- There is no source checkout or Docker build on the VPS. Rollback pulls the
+  previous `ghcr.io/hexalis/milanko-frontend-app:<env>-<sha>` tag.
 
 ## 15. Quick reference
 

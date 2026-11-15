@@ -69,9 +69,12 @@ The PostgreSQL superuser password lives in `/etc/milanko/postgres.env`
 - Key maps: `/etc/nginx/snippets/milanko-api-keys-<env>.conf` (generated).
 - Proxy and error snippets: `/etc/nginx/snippets/milanko-api-{proxy,errors}.conf`.
 - Cloudflare real IP: `/etc/nginx/snippets/cloudflare-realip.conf`.
-- Static placeholder: `/srv/milanko/frontend/<env>/index.html`.
-- Root proxy: nginx forwards `/` to the frontend container on 8021–8023 and
-  falls back to the placeholder if the container is down.
+- Landing: `/srv/milanko/landing/<env>` serves `/` and `/en/` as static files.
+- App proxy: nginx forwards `/app` and `/app/` to the frontend container on
+  8021–8023 and falls back to `/srv/milanko/frontend/<env>/index.html` if the
+  container is down.
+- API rate limits and key validation maps are still installed, but the site
+  currently does not apply them (temporarily disabled).
 
 Apply the checked-in configuration with:
 
