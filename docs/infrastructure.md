@@ -1,5 +1,8 @@
 # Infrastructure
 
+For the process-level runbook (systemd timers, resource limits, ingestion
+recovery and monitoring), see [`server-processes.md`](server-processes.md).
+
 ## VPS
 
 | Item | Value |

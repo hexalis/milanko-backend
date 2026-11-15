@@ -68,7 +68,8 @@ This is the only exception to the organization's centralized workflow policy
 because the public deliverable must include everything except the design system.
 
 See [`docs/pipelines.md`](docs/pipelines.md) for the workflow, required GitHub
-Environment variables/secrets and rollback.
+Environment variables/secrets and rollback. Host and worker operations are in
+[`docs/server-processes.md`](docs/server-processes.md).
 
 ## Ingestion
 

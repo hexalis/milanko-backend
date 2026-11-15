@@ -74,4 +74,5 @@ systemd timer
 ```
 
 The API containers publish only on `127.0.0.1`; PostgreSQL is only reachable on
-the `milanko` Docker network.
+the `milanko` Docker network. See [`server-processes.md`](server-processes.md)
+for the server configuration and operational runbook.

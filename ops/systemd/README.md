@@ -1,5 +1,7 @@
 # Ingestion timers
 
+Full server and process runbook: [`../../docs/server-processes.md`](../../docs/server-processes.md).
+
 The timers run the same image as the API (`milanko-api:<environment>`) as a
 one-off container on the `milanko` Docker network. The database and NASA
 credentials come from `/etc/milanko/backend-<environment>.env`.
