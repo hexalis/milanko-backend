@@ -54,12 +54,15 @@ environment to its branch and require reviewers for `production`.
 | `DEPLOY_SSH_KEY` | Private key authorized for the `deploy` user on the VPS |
 | `DEPLOY_KNOWN_HOSTS` | Pinned `known_hosts` line for the VPS |
 | `SMOKE_API_KEY` | `internal-smoke` API key for the environment |
+| `DEPLOY_HOST` | VPS IP / host. Stored as a secret so the public repository does not expose it |
+
+The workflow also accepts a `DEPLOY_HOST` variable as a fallback, but the
+recommended setup is the environment secret.
 
 ### Variables
 
 | Variable | develop | qa | production |
 |---|---|---|---|
-| `DEPLOY_HOST` | VPS IP / host | VPS IP / host | VPS IP / host |
 | `DEPLOY_USER` | `deploy` | `deploy` | `deploy` |
 | `DEPLOY_SSH_PORT` | `22` | `22` | `22` |
 | `DEPLOY_REMOTE_PATH` | `/home/deploy/milanko-backend-develop` | `/home/deploy/milanko-backend-qa` | `/home/deploy/milanko-backend-production` |

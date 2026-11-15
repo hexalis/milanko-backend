@@ -66,7 +66,7 @@ jobs:
         env:
           SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
-          HOST: ${{ vars.DEPLOY_HOST }}
+          HOST: ${{ secrets.DEPLOY_HOST || vars.DEPLOY_HOST }}
           SSH_PORT: ${{ vars.DEPLOY_SSH_PORT || 22 }}
         run: |
           set -euo pipefail
@@ -84,7 +84,7 @@ jobs:
       - name: Deploy on server
         shell: bash
         env:
-          HOST: ${{ vars.DEPLOY_HOST }}
+          HOST: ${{ secrets.DEPLOY_HOST || vars.DEPLOY_HOST }}
           USER_NAME: ${{ vars.DEPLOY_USER }}
           SSH_PORT: ${{ vars.DEPLOY_SSH_PORT || 22 }}
           REMOTE_PATH: ${{ vars.DEPLOY_REMOTE_PATH }}
