@@ -70,6 +70,8 @@ The PostgreSQL superuser password lives in `/etc/milanko/postgres.env`
 - Proxy and error snippets: `/etc/nginx/snippets/milanko-api-{proxy,errors}.conf`.
 - Cloudflare real IP: `/etc/nginx/snippets/cloudflare-realip.conf`.
 - Static placeholder: `/srv/milanko/frontend/<env>/index.html`.
+- Root proxy: nginx forwards `/` to the frontend container on 8021–8023 and
+  falls back to the placeholder if the container is down.
 
 Apply the checked-in configuration with:
 

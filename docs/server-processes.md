@@ -343,9 +343,11 @@ accept `secrets.DEPLOY_HOST || vars.DEPLOY_HOST`.
   `/etc/nginx/snippets/cloudflare-realip.conf`.
 - TLS is Let's Encrypt with the HTTP-01 webroot challenge; Cloudflare forwards
   `/.well-known/acme-challenge/` to the origin. Renewal is automatic.
-- The static placeholder lives in `/srv/milanko/frontend/<env>/index.html`.
-  When the Next.js frontend is ready, nginx root should proxy to the
-  `milanko-web-<env>` container instead of serving the placeholder.
+- nginx root proxies to the frontend container on `127.0.0.1:8021` (develop),
+  `8022` (qa) or `8023` (production). If the container is down, nginx serves
+  `/srv/milanko/frontend/<env>/index.html` through
+  `error_page 502 503 504 = @frontend_placeholder_<env>` instead of returning a
+  502. This lets the frontend deploy and restart without a public outage.
 
 Useful checks:
 
