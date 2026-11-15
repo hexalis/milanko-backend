@@ -29,14 +29,14 @@ flock -n 9 || { echo "job ${env_name}/${job} already running"; exit 0; }
 
 case "$job" in
   power)
-    args=(python -m backend.ingest_power --days "${POWER_DAYS:-14}")
+    args=(python -m processor.ingest_power --days "${POWER_DAYS:-14}")
     ;;
   eonet)
     since="$(date -u -d "${EONET_DAYS:-45} days ago" +%F)"
-    args=(python -m backend.ingest_eonet --since "$since")
+    args=(python -m processor.ingest_eonet --since "$since")
     ;;
   gibs)
-    args=(python -m backend.ingest_gibs run --days "${GIBS_DAYS:-10}" --workers "${GIBS_WORKERS:-2}")
+    args=(python -m processor.ingest_gibs run --days "${GIBS_DAYS:-10}" --workers "${GIBS_WORKERS:-2}")
     ;;
   *)
     echo "invalid job: $job" >&2

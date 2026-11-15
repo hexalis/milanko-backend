@@ -1,0 +1,5818 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Milanko API",
+    "summary": "Natural events + environmental variables for research",
+    "description": "Research API built on **NASA POWER**, **EONET v3**, and **NASA GIBS** (with FIRMS/AERONET/DONKI as complements).\n\n### Method\n- **Anomalies**: empirical percentiles by day of the year (±7 days, 2006+).\n- **Event windows**: adaptive by category and duration, capped at 90 days.\n- **Trends**: Mann–Kendall + Sen on seasonally adjusted monthly anomalies.\n- **Correlations**: events/month vs monthly anomalies, lags −6…+6 and FDR (BH).\n\n### Limits and notes\n- POWER: max. 20 variables per request (the server splits them), **local solar time (LST)**.\n- GIBS: quantifiable via WMS; thermal layers are vectorial (MVT).\n- **Exploratory** results; the tool does not determine causality.\n\n### Documentation\n- Swagger UI: [`/docs`](/docs)\n- ReDoc: [`/redoc`](/redoc)\n- OpenAPI JSON: [`/openapi.json`](/openapi.json)\n\nPython code: `core/nasa_events/` · Phase 0 results: `docs/00-recon/` · Analysis methodology: `docs/02-analysis/methodology.md`.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Service status and core size",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/ping": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Protected smoke-test endpoint",
+        "description": "Used by the deployment pipeline; nginx requires the API key.",
+        "operationId": "ping_ping_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "type": "object",
+                  "title": "Response Ping Ping Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regions": {
+      "get": {
+        "tags": [
+          "regions"
+        ],
+        "summary": "Lists the 162 Milanko geodesic regions",
+        "operationId": "regions_regions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regions/rankings": {
+      "get": {
+        "tags": [
+          "regions"
+        ],
+        "summary": "Global ranking of regions by value, anomaly, or trend",
+        "operationId": "regions_rankings_regions_rankings_get",
+        "parameters": [
+          {
+            "name": "variable",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Variable code, e.g. T2M",
+              "title": "Variable"
+            },
+            "description": "Variable code, e.g. T2M"
+          },
+          {
+            "name": "metric",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "value",
+                "anomaly",
+                "trend"
+              ],
+              "type": "string",
+              "default": "anomaly",
+              "title": "Metric"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "desc",
+                "asc"
+              ],
+              "type": "string",
+              "default": "desc",
+              "title": "Order"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "default": "2006-01-01",
+              "title": "Start"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 162,
+              "minimum": 1,
+              "default": 10,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Source; inferred from the catalog",
+              "title": "Source"
+            },
+            "description": "Source; inferred from the catalog"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionRankingsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regions/snapshot": {
+      "get": {
+        "tags": [
+          "regions"
+        ],
+        "summary": "Value or anomaly of a variable across the 162 regions",
+        "operationId": "regions_snapshot_regions_snapshot_get",
+        "parameters": [
+          {
+            "name": "variable",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Variable code, e.g. T2M",
+              "title": "Variable"
+            },
+            "description": "Variable code, e.g. T2M"
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "title": "Date"
+            }
+          },
+          {
+            "name": "metric",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "value",
+                "anomaly"
+              ],
+              "type": "string",
+              "default": "value",
+              "title": "Metric"
+            }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Source; inferred from the catalog",
+              "title": "Source"
+            },
+            "description": "Source; inferred from the catalog"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionSnapshotResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regions/{region_code}/observations": {
+      "get": {
+        "tags": [
+          "regions"
+        ],
+        "summary": "Persisted series for a region",
+        "operationId": "region_observations_regions__region_code__observations_get",
+        "parameters": [
+          {
+            "name": "region_code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 161,
+              "minimum": 0,
+              "title": "Region Code"
+            }
+          },
+          {
+            "name": "variables",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Comma-separated codes (e.g. LST_DAY,SST)",
+              "title": "Variables"
+            },
+            "description": "Comma-separated codes (e.g. LST_DAY,SST)"
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "default": "2006-01-01",
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 20000,
+              "minimum": 1,
+              "default": 5000,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionObservationsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regions/{region_code}/latest": {
+      "get": {
+        "tags": [
+          "regions"
+        ],
+        "summary": "Last valid value of each variable in a region",
+        "operationId": "region_latest_regions__region_code__latest_get",
+        "parameters": [
+          {
+            "name": "region_code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 161,
+              "minimum": 0,
+              "title": "Region Code"
+            }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "E.g. NASA POWER, NASA GIBS",
+              "title": "Source"
+            },
+            "description": "E.g. NASA POWER, NASA GIBS"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionLatestResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regions/{region_code}/events": {
+      "get": {
+        "tags": [
+          "regions"
+        ],
+        "summary": "EONET events associated with a region",
+        "operationId": "region_events_regions__region_code__events_get",
+        "parameters": [
+          {
+            "name": "region_code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 161,
+              "minimum": 0,
+              "title": "Region Code"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Comma-separated categories",
+              "title": "Category"
+            },
+            "description": "Comma-separated categories"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "open",
+                "closed",
+                "all"
+              ],
+              "type": "string",
+              "default": "all",
+              "title": "Status"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "default": "2006-01-01",
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionEventsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regions/{region_code}/trends": {
+      "get": {
+        "tags": [
+          "regions"
+        ],
+        "summary": "Trends for a region using persisted data",
+        "operationId": "region_trends_regions__region_code__trends_get",
+        "parameters": [
+          {
+            "name": "region_code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 161,
+              "minimum": 0,
+              "title": "Region Code"
+            }
+          },
+          {
+            "name": "variables",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Comma-separated codes",
+              "title": "Variables"
+            },
+            "description": "Comma-separated codes"
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "default": "2006-01-01",
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "name": "alpha",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "exclusiveMaximum": 0.5,
+              "exclusiveMinimum": 0,
+              "default": 0.05,
+              "title": "Alpha"
+            }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "NASA POWER",
+              "title": "Source"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Region Trends Regions  Region Code  Trends Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regions/{region_code}/anomalies": {
+      "get": {
+        "tags": [
+          "regions"
+        ],
+        "summary": "Anomalies for a region using persisted data",
+        "operationId": "region_anomalies_regions__region_code__anomalies_get",
+        "parameters": [
+          {
+            "name": "region_code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 161,
+              "minimum": 0,
+              "title": "Region Code"
+            }
+          },
+          {
+            "name": "variables",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Comma-separated codes",
+              "title": "Variables"
+            },
+            "description": "Comma-separated codes"
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "default": "2006-01-01",
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "name": "window_days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 30,
+              "minimum": 1,
+              "default": 7,
+              "title": "Window Days"
+            }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "NASA POWER",
+              "title": "Source"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Region Anomalies Regions  Region Code  Anomalies Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/data/coverage": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Coverage of persisted data by variable",
+        "operationId": "data_coverage_data_coverage_get",
+        "parameters": [
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoverageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalog/variables": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Lists the master catalog variables",
+        "operationId": "catalog_variables_catalog_variables_get",
+        "parameters": [
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by source: NASA POWER, EONET v3, NASA GIBS…",
+              "title": "Source"
+            },
+            "description": "Filter by source: NASA POWER, EONET v3, NASA GIBS…"
+          },
+          {
+            "name": "section",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by section/topic of the master CSV",
+              "title": "Section"
+            },
+            "description": "Filter by section/topic of the master CSV"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Text search in code, name, and definition",
+              "title": "Q"
+            },
+            "description": "Text search in code, name, and definition"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "description": "Maximum number of results",
+              "default": 300,
+              "title": "Limit"
+            },
+            "description": "Maximum number of results"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalog/variables/{code}": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Details of a variable or layer",
+        "operationId": "catalog_variable_catalog_variables__code__get",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Code"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VariableInfo"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalog/events/categories": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "EONET event categories (live)",
+        "operationId": "event_categories_catalog_events_categories_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoriesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/events": {
+      "get": {
+        "tags": [
+          "events"
+        ],
+        "summary": "Normalized EONET events",
+        "operationId": "events_events_get",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "One or more categories separated by commas (e.g. wildfires,floods)",
+              "title": "Category"
+            },
+            "description": "One or more categories separated by commas (e.g. wildfires,floods)"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "open",
+                "closed",
+                "all"
+              ],
+              "type": "string",
+              "description": "Event status",
+              "default": "open",
+              "title": "Status"
+            },
+            "description": "Event status"
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "2026-01-01"
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "2026-10-19"
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 36500,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Last N days",
+              "title": "Days"
+            },
+            "description": "Last N days"
+          },
+          {
+            "name": "bbox",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "minLon,maxLat,maxLon,minLat (EONET format)",
+              "examples": [
+                "-76,-17,-66,-56"
+              ],
+              "title": "Bbox"
+            },
+            "description": "minLon,maxLat,maxLon,minLat (EONET format)"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "mag_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "E.g. mag_kts",
+              "title": "Mag Id"
+            },
+            "description": "E.g. mag_kts"
+          },
+          {
+            "name": "mag_min",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Minimum magnitude",
+              "title": "Mag Min"
+            },
+            "description": "Minimum magnitude"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/events/stats": {
+      "get": {
+        "tags": [
+          "events"
+        ],
+        "summary": "Statistics for the persisted EONET catalog",
+        "operationId": "persisted_event_stats_events_stats_get",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Comma-separated categories",
+              "title": "Category"
+            },
+            "description": "Comma-separated categories"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "open",
+                "closed",
+                "all"
+              ],
+              "type": "string",
+              "default": "all",
+              "title": "Status"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "default": "2006-01-01",
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventStatsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/events/map": {
+      "get": {
+        "tags": [
+          "events"
+        ],
+        "summary": "Representative event points for the globe",
+        "operationId": "events_map_events_map_get",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Comma-separated categories",
+              "title": "Category"
+            },
+            "description": "Comma-separated categories"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "open",
+                "closed",
+                "all"
+              ],
+              "type": "string",
+              "default": "all",
+              "title": "Status"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "default": "2006-01-01",
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 20000,
+              "minimum": 1,
+              "default": 5000,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Events Map Events Map Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/events/persisted": {
+      "get": {
+        "tags": [
+          "events"
+        ],
+        "summary": "EONET catalog persisted in PostgreSQL",
+        "operationId": "persisted_events_events_persisted_get",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Comma-separated categories",
+              "title": "Category"
+            },
+            "description": "Comma-separated categories"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "open",
+                "closed",
+                "all"
+              ],
+              "type": "string",
+              "default": "all",
+              "title": "Status"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "default": "2006-01-01",
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 5000,
+              "minimum": 1,
+              "default": 500,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/events/{event_id}/context": {
+      "get": {
+        "tags": [
+          "events"
+        ],
+        "summary": "Persisted environmental context for an EONET event",
+        "operationId": "event_context_events__event_id__context_get",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Event Context Events  Event Id  Context Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/events/{event_id}": {
+      "get": {
+        "tags": [
+          "events"
+        ],
+        "summary": "Details of an EONET event",
+        "operationId": "event_detail_events__event_id__get",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/observations": {
+      "get": {
+        "tags": [
+          "observations"
+        ],
+        "summary": "Normalized POWER series (daily or monthly, single point)",
+        "operationId": "observations_observations_get",
+        "parameters": [
+          {
+            "name": "variables",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Comma-separated POWER codes (the server splits them into ≤20 per request)",
+              "examples": [
+                "T2M,PRECTOTCORR,RH2M"
+              ],
+              "title": "Variables"
+            },
+            "description": "Comma-separated POWER codes (the server splits them into ≤20 per request)"
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 90,
+              "minimum": -90,
+              "examples": [
+                -33.45
+              ],
+              "title": "Lat"
+            }
+          },
+          {
+            "name": "lon",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 180,
+              "minimum": -180,
+              "examples": [
+                -70.66
+              ],
+              "title": "Lon"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{8}$",
+              "examples": [
+                "20060101"
+              ],
+              "default": "20060101",
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{8}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "20261018"
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "name": "community",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "RE",
+                "AG",
+                "SB"
+              ],
+              "type": "string",
+              "default": "RE",
+              "title": "Community"
+            }
+          },
+          {
+            "name": "site_elevation",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Meters; required when querying PSC",
+              "title": "Site Elevation"
+            },
+            "description": "Meters; required when querying PSC"
+          },
+          {
+            "name": "granularity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "daily",
+                "monthly"
+              ],
+              "type": "string",
+              "description": "daily uses daily POWER; monthly uses monthly POWER (start/end are trimmed to the year).",
+              "default": "daily",
+              "title": "Granularity"
+            },
+            "description": "daily uses daily POWER; monthly uses monthly POWER (start/end are trimmed to the year)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObservationsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/anomalies": {
+      "get": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Daily anomalies (empirical baseline by day of year)",
+        "operationId": "anomalies_anomalies_get",
+        "parameters": [
+          {
+            "name": "variables",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "examples": [
+                "T2M,PRECTOTCORR"
+              ],
+              "title": "Variables"
+            }
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 90,
+              "minimum": -90,
+              "title": "Lat"
+            }
+          },
+          {
+            "name": "lon",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 180,
+              "minimum": -180,
+              "title": "Lon"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{8}$",
+              "default": "20060101",
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{8}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "name": "community",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "RE",
+                "AG",
+                "SB"
+              ],
+              "type": "string",
+              "default": "RE",
+              "title": "Community"
+            }
+          },
+          {
+            "name": "site_elevation",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Site Elevation"
+            }
+          },
+          {
+            "name": "baseline_window_days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 30,
+              "minimum": 1,
+              "description": "±days window per day of the year",
+              "default": 7,
+              "title": "Baseline Window Days"
+            },
+            "description": "±days window per day of the year"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnomaliesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/trends": {
+      "get": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Monthly trends (Mann–Kendall + Sen, seasonal adjustment)",
+        "operationId": "trends_trends_get",
+        "parameters": [
+          {
+            "name": "variables",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "examples": [
+                "T2M,PRECTOTCORR,RH2M"
+              ],
+              "title": "Variables"
+            }
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 90,
+              "minimum": -90,
+              "title": "Lat"
+            }
+          },
+          {
+            "name": "lon",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 180,
+              "minimum": -180,
+              "title": "Lon"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{8}$",
+              "default": "20060101",
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{8}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "name": "community",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "RE",
+                "AG",
+                "SB"
+              ],
+              "type": "string",
+              "default": "RE",
+              "title": "Community"
+            }
+          },
+          {
+            "name": "site_elevation",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Site Elevation"
+            }
+          },
+          {
+            "name": "alpha",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "exclusiveMaximum": 0.5,
+              "exclusiveMinimum": 0,
+              "description": "Significance level",
+              "default": 0.05,
+              "title": "Alpha"
+            },
+            "description": "Significance level"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/correlations": {
+      "get": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Correlation of events/month vs anomalies (lags −N…+N, FDR)",
+        "operationId": "correlations_correlations_get",
+        "parameters": [
+          {
+            "name": "variables",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "examples": [
+                "T2M,PRECTOTCORR,RH2M"
+              ],
+              "title": "Variables"
+            }
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 90,
+              "minimum": -90,
+              "title": "Lat"
+            }
+          },
+          {
+            "name": "lon",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 180,
+              "minimum": -180,
+              "title": "Lon"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Comma-separated EONET categories; empty = all events",
+              "title": "Category"
+            },
+            "description": "Comma-separated EONET categories; empty = all events"
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{8}$",
+              "default": "20060101",
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{8}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "name": "community",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "RE",
+                "AG",
+                "SB"
+              ],
+              "type": "string",
+              "default": "RE",
+              "title": "Community"
+            }
+          },
+          {
+            "name": "site_elevation",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Site Elevation"
+            }
+          },
+          {
+            "name": "bbox",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "minLon,maxLat,maxLon,minLat (EONET format)",
+              "title": "Bbox"
+            },
+            "description": "minLon,maxLat,maxLon,minLat (EONET format)"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "open",
+                "closed",
+                "all"
+              ],
+              "type": "string",
+              "default": "all",
+              "title": "Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "description": "Maximum number of EONET events to consider",
+              "default": 200,
+              "title": "Limit"
+            },
+            "description": "Maximum number of EONET events to consider"
+          },
+          {
+            "name": "max_lag_months",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 24,
+              "minimum": 0,
+              "default": 6,
+              "title": "Max Lag Months"
+            }
+          },
+          {
+            "name": "method",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "spearman",
+                "pearson"
+              ],
+              "type": "string",
+              "default": "spearman",
+              "title": "Method"
+            }
+          },
+          {
+            "name": "baseline_window_days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 30,
+              "minimum": 1,
+              "default": 7,
+              "title": "Baseline Window Days"
+            }
+          },
+          {
+            "name": "mag_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Mag Id"
+            }
+          },
+          {
+            "name": "mag_min",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Mag Min"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CorrelationsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/events/{event_id}/analysis": {
+      "get": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Anomalies of an event at a point (adaptive window)",
+        "operationId": "event_analysis_events__event_id__analysis_get",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "variables",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "examples": [
+                "T2M,PRECTOTCORR,RH2M"
+              ],
+              "title": "Variables"
+            }
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 90,
+              "minimum": -90,
+              "title": "Lat"
+            }
+          },
+          {
+            "name": "lon",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 180,
+              "minimum": -180,
+              "title": "Lon"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{8}$",
+              "description": "Start of the series used for the baseline (historical)",
+              "default": "20060101",
+              "title": "Start"
+            },
+            "description": "Start of the series used for the baseline (historical)"
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{8}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "name": "community",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "RE",
+                "AG",
+                "SB"
+              ],
+              "type": "string",
+              "default": "RE",
+              "title": "Community"
+            }
+          },
+          {
+            "name": "site_elevation",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Site Elevation"
+            }
+          },
+          {
+            "name": "baseline_window_days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 30,
+              "minimum": 1,
+              "default": 7,
+              "title": "Baseline Window Days"
+            }
+          },
+          {
+            "name": "max_context_days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 180,
+              "minimum": 7,
+              "default": 90,
+              "title": "Max Context Days"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventAnalysisResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analysis/point": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Full analysis at a point: trends + events + correlations",
+        "description": "Runs the Phase 2 pipeline in a single call: daily series, trends, per-event summaries (adaptive windows), and correlations with lags/FDR. If `events` is omitted, only trends are computed.",
+        "operationId": "point_analysis_analysis_point_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PointAnalysisRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PointAnalysisResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/world/config": {
+      "get": {
+        "tags": [
+          "world"
+        ],
+        "summary": "Configuration to render the planet in the Milanko globe",
+        "description": "Returns all the URLs and metadata the 3D globe needs: base binaries (ETDW), fine level, decoded cells, hexbinning, and GIBS snapshots.",
+        "operationId": "world_config_world_config_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/world/meta.json": {
+      "get": {
+        "tags": [
+          "world"
+        ],
+        "summary": "Base world metadata",
+        "operationId": "world_meta_json_world_meta_json_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/world/base-56.bin": {
+      "get": {
+        "tags": [
+          "world"
+        ],
+        "summary": "Base world f=56 (31.362 cells, ~158 km per cell)",
+        "operationId": "world_base_56_world_base_56_bin_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/world/base-80.bin": {
+      "get": {
+        "tags": [
+          "world"
+        ],
+        "summary": "Base world f=80 (64.002 cells, ~111 km per cell)",
+        "operationId": "world_base_80_world_base_80_bin_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/world/fine-288/{filename}": {
+      "get": {
+        "tags": [
+          "world"
+        ],
+        "summary": "Fine level f=288 per region (r000.bin … r161.bin)",
+        "description": "ETDW format; 162 files, one per region.",
+        "operationId": "world_fine_world_fine_288__filename__get",
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Filename"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/world/cells": {
+      "get": {
+        "tags": [
+          "world"
+        ],
+        "summary": "Decoded base world cells (biome, elevation, color, water)",
+        "description": "JSON view of the base binary to explore/color the planet without parsing ETDW. Lets you filter by biome, water/land, and bbox (west,south,east,north).",
+        "operationId": "world_cells_world_cells_get",
+        "parameters": [
+          {
+            "name": "f",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Grid frequency (56 or 80)",
+              "default": 80,
+              "title": "F"
+            },
+            "description": "Grid frequency (56 or 80)"
+          },
+          {
+            "name": "biome",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "E.g. forest, desert, ice, sea, urban",
+              "title": "Biome"
+            },
+            "description": "E.g. forest, desert, ice, sea, urban"
+          },
+          {
+            "name": "water",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "true=water, false=land",
+              "title": "Water"
+            },
+            "description": "true=water, false=land"
+          },
+          {
+            "name": "bbox",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "west,south,east,north (supports antimeridian crossing)",
+              "title": "Bbox"
+            },
+            "description": "west,south,east,north (supports antimeridian crossing)"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 20000,
+              "minimum": 1,
+              "default": 2000,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorldCellsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/world/snapshot": {
+      "get": {
+        "tags": [
+          "world"
+        ],
+        "summary": "Satellite image of a point (GIBS proxy, MODIS TrueColor)",
+        "description": "Returns a PNG of ~km×km centered on the point (MODIS/Terra TrueColor by default). Useful for the 'view from orbit' of a case file. Default date: today-3.",
+        "operationId": "world_snapshot_world_snapshot_get",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 90,
+              "minimum": -90,
+              "title": "Lat"
+            }
+          },
+          {
+            "name": "lon",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 180,
+              "minimum": -180,
+              "title": "Lon"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD (default today-3)",
+              "title": "Date"
+            },
+            "description": "YYYY-MM-DD (default today-3)"
+          },
+          {
+            "name": "km",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "maximum": 2000,
+              "minimum": 20,
+              "description": "Width of the crop in km",
+              "default": 220,
+              "title": "Km"
+            },
+            "description": "Width of the crop in km"
+          },
+          {
+            "name": "px",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1024,
+              "minimum": 64,
+              "default": 480,
+              "title": "Px"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "image/png": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hexgrid/meta": {
+      "get": {
+        "tags": [
+          "hexbin"
+        ],
+        "summary": "Metadata for the hexagonal geodesic grid (frequencies, sizes, biomes)",
+        "operationId": "hexgrid_meta_hexgrid_meta_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hexbin/events": {
+      "get": {
+        "tags": [
+          "hexbin"
+        ],
+        "summary": "EONET events aggregated into hexagonal cells",
+        "description": "Groups each event by its first geometry on the Milanko geodesic grid. Returns cell code, centroid, count, events, and magnitude totals. Use `format=geojson` for a FeatureCollection (point or polygon).",
+        "operationId": "hexbin_events_hexbin_events_get",
+        "parameters": [
+          {
+            "name": "f",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Grid frequency (56 or 80)",
+              "default": 80,
+              "title": "F"
+            },
+            "description": "Grid frequency (56 or 80)"
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Comma-separated EONET categories; empty = all",
+              "title": "Category"
+            },
+            "description": "Comma-separated EONET categories; empty = all"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "open",
+                "closed",
+                "all"
+              ],
+              "type": "string",
+              "default": "all",
+              "title": "Status"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "name": "bbox",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "EONET format: minLon,maxLat,maxLon,minLat",
+              "title": "Bbox"
+            },
+            "description": "EONET format: minLon,maxLat,maxLon,minLat"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 500,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "include_geometry",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Include the cell polygon",
+              "default": false,
+              "title": "Include Geometry"
+            },
+            "description": "Include the cell polygon"
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "geojson"
+              ],
+              "type": "string",
+              "default": "json",
+              "title": "Format"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HexbinEventsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hexbin/points": {
+      "post": {
+        "tags": [
+          "hexbin"
+        ],
+        "summary": "Aggregates arbitrary points (with optional value) into hexagonal cells",
+        "description": "Works with any research data that has coordinates: events, POWER observations, field samples… `aggregate` = count/sum/mean/max. If `geojson=true`, returns a FeatureCollection instead of the typed JSON.",
+        "operationId": "hexbin_points_hexbin_points_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HexbinPointsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HexbinPointsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AnomaliesResponse": {
+        "properties": {
+          "request": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Request"
+          },
+          "baseline_window_days": {
+            "type": "integer",
+            "title": "Baseline Window Days"
+          },
+          "variables": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/AnomalyVariable"
+            },
+            "type": "object",
+            "title": "Variables"
+          }
+        },
+        "type": "object",
+        "required": [
+          "request",
+          "baseline_window_days",
+          "variables"
+        ],
+        "title": "AnomaliesResponse"
+      },
+      "AnomalyPoint": {
+        "properties": {
+          "time": {
+            "type": "string",
+            "title": "Time"
+          },
+          "value": {
+            "type": "number",
+            "title": "Value"
+          },
+          "anomaly": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anomaly",
+            "description": "value - median of the DOY window"
+          },
+          "z": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Z"
+          },
+          "percentile": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percentile"
+          },
+          "extreme": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extreme",
+            "description": "high | low | null"
+          }
+        },
+        "type": "object",
+        "required": [
+          "time",
+          "value",
+          "anomaly",
+          "z",
+          "percentile",
+          "extreme"
+        ],
+        "title": "AnomalyPoint"
+      },
+      "AnomalyVariable": {
+        "properties": {
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "time_standard": {
+            "type": "string",
+            "title": "Time Standard"
+          },
+          "values": {
+            "items": {
+              "$ref": "#/components/schemas/AnomalyPoint"
+            },
+            "type": "array",
+            "title": "Values"
+          }
+        },
+        "type": "object",
+        "required": [
+          "unit",
+          "time_standard",
+          "values"
+        ],
+        "title": "AnomalyVariable"
+      },
+      "CatalogResponse": {
+        "properties": {
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "variables": {
+            "items": {
+              "$ref": "#/components/schemas/VariableInfo"
+            },
+            "type": "array",
+            "title": "Variables"
+          }
+        },
+        "type": "object",
+        "required": [
+          "count",
+          "variables"
+        ],
+        "title": "CatalogResponse"
+      },
+      "CategoriesResponse": {
+        "properties": {
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/CategoryInfo"
+            },
+            "type": "array",
+            "title": "Categories"
+          }
+        },
+        "type": "object",
+        "required": [
+          "count",
+          "categories"
+        ],
+        "title": "CategoriesResponse"
+      },
+      "CategoryInfo": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "CategoryInfo"
+      },
+      "CorrelationOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "best": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LagCorrelationOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lags": {
+            "items": {
+              "$ref": "#/components/schemas/LagCorrelationOut"
+            },
+            "type": "array",
+            "title": "Lags"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "best",
+          "lags"
+        ],
+        "title": "CorrelationOut"
+      },
+      "CorrelationsResponse": {
+        "properties": {
+          "request": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Request"
+          },
+          "events_count": {
+            "type": "integer",
+            "title": "Events Count"
+          },
+          "correlations": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CorrelationOut"
+            },
+            "type": "object",
+            "title": "Correlations"
+          }
+        },
+        "type": "object",
+        "required": [
+          "request",
+          "events_count",
+          "correlations"
+        ],
+        "title": "CorrelationsResponse"
+      },
+      "CoverageResponse": {
+        "properties": {
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "variables": {
+            "items": {
+              "$ref": "#/components/schemas/VariableCoverageOut"
+            },
+            "type": "array",
+            "title": "Variables"
+          }
+        },
+        "type": "object",
+        "required": [
+          "count",
+          "variables"
+        ],
+        "title": "CoverageResponse"
+      },
+      "EventAnalysisResponse": {
+        "properties": {
+          "request": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Request"
+          },
+          "event": {
+            "$ref": "#/components/schemas/EventOut"
+          },
+          "window": {
+            "$ref": "#/components/schemas/EventWindowOut"
+          },
+          "variables": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/EventVariableSummary"
+            },
+            "type": "object",
+            "title": "Variables"
+          }
+        },
+        "type": "object",
+        "required": [
+          "request",
+          "event",
+          "window",
+          "variables"
+        ],
+        "title": "EventAnalysisResponse"
+      },
+      "EventCategoryCount": {
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "count"
+        ],
+        "title": "EventCategoryCount"
+      },
+      "EventFilter": {
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category",
+            "examples": [
+              [
+                "wildfires",
+                "drought"
+              ]
+            ]
+          },
+          "bbox": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array",
+                "maxItems": 4,
+                "minItems": 4
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bbox",
+            "description": "EONET format: [minLon, maxLat, maxLon, minLat]",
+            "examples": [
+              [
+                -76.0,
+                -17.0,
+                -66.0,
+                -56.0
+              ]
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed",
+              "all"
+            ],
+            "title": "Status",
+            "default": "all"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "default": 200
+          },
+          "mag_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mag Id"
+          },
+          "mag_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mag Min"
+          }
+        },
+        "type": "object",
+        "title": "EventFilter"
+      },
+      "EventOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "link": {
+            "type": "string",
+            "title": "Link"
+          },
+          "closed": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed"
+          },
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Categories"
+          },
+          "sources": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Sources"
+          },
+          "geometry": {
+            "items": {
+              "$ref": "#/components/schemas/GeometryOut"
+            },
+            "type": "array",
+            "title": "Geometry"
+          },
+          "first_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Date"
+          },
+          "last_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Date"
+          },
+          "duration_days": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Days"
+          },
+          "n_geometries": {
+            "type": "integer",
+            "title": "N Geometries"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "description",
+          "link",
+          "closed",
+          "categories",
+          "sources",
+          "geometry",
+          "first_date",
+          "last_date",
+          "duration_days",
+          "n_geometries"
+        ],
+        "title": "EventOut"
+      },
+      "EventStatsResponse": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "statuses": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Statuses"
+          },
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/EventCategoryCount"
+            },
+            "type": "array",
+            "title": "Categories"
+          },
+          "years": {
+            "items": {
+              "$ref": "#/components/schemas/EventYearCount"
+            },
+            "type": "array",
+            "title": "Years"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "statuses",
+          "categories",
+          "years"
+        ],
+        "title": "EventStatsResponse"
+      },
+      "EventSummaryOut": {
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "title": "Event Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Categories"
+          },
+          "window": {
+            "$ref": "#/components/schemas/EventWindowOut"
+          },
+          "variables": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/EventVariableSummary"
+            },
+            "type": "object",
+            "title": "Variables"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event_id",
+          "title",
+          "categories",
+          "window",
+          "variables"
+        ],
+        "title": "EventSummaryOut"
+      },
+      "EventVariableSummary": {
+        "properties": {
+          "n_days": {
+            "type": "integer",
+            "title": "N Days"
+          },
+          "mean_anomaly": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean Anomaly"
+          },
+          "mean_z": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean Z"
+          },
+          "extreme_fraction": {
+            "type": "number",
+            "title": "Extreme Fraction"
+          }
+        },
+        "type": "object",
+        "required": [
+          "n_days",
+          "mean_anomaly",
+          "mean_z",
+          "extreme_fraction"
+        ],
+        "title": "EventVariableSummary"
+      },
+      "EventWindowOut": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "title": "End"
+          },
+          "lead_days": {
+            "type": "integer",
+            "title": "Lead Days"
+          },
+          "lag_days": {
+            "type": "integer",
+            "title": "Lag Days"
+          },
+          "event_start": {
+            "type": "string",
+            "title": "Event Start"
+          },
+          "event_end": {
+            "type": "string",
+            "title": "Event End"
+          },
+          "duration_days": {
+            "type": "integer",
+            "title": "Duration Days"
+          },
+          "profile": {
+            "type": "string",
+            "title": "Profile"
+          },
+          "rationale": {
+            "type": "string",
+            "title": "Rationale"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end",
+          "lead_days",
+          "lag_days",
+          "event_start",
+          "event_end",
+          "duration_days",
+          "profile",
+          "rationale"
+        ],
+        "title": "EventWindowOut"
+      },
+      "EventYearCount": {
+        "properties": {
+          "year": {
+            "type": "integer",
+            "title": "Year"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "year",
+          "count"
+        ],
+        "title": "EventYearCount"
+      },
+      "EventsResponse": {
+        "properties": {
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/EventOut"
+            },
+            "type": "array",
+            "title": "Events"
+          }
+        },
+        "type": "object",
+        "required": [
+          "count",
+          "events"
+        ],
+        "title": "EventsResponse"
+      },
+      "GeometryOut": {
+        "properties": {
+          "date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "coordinates": {
+            "items": {},
+            "type": "array",
+            "title": "Coordinates"
+          },
+          "magnitude_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Magnitude Value"
+          },
+          "magnitude_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Magnitude Unit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "type",
+          "coordinates"
+        ],
+        "title": "GeometryOut"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "examples": [
+              "ok"
+            ]
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "core_variables": {
+            "type": "integer",
+            "title": "Core Variables"
+          },
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp"
+          },
+          "database": {
+            "type": "string",
+            "title": "Database",
+            "default": "not_configured",
+            "examples": [
+              "ok",
+              "not_configured",
+              "error"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "version",
+          "core_variables",
+          "timestamp"
+        ],
+        "title": "HealthResponse"
+      },
+      "HexbinCellOut": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code"
+          },
+          "face": {
+            "type": "integer",
+            "title": "Face"
+          },
+          "i": {
+            "type": "integer",
+            "title": "I"
+          },
+          "j": {
+            "type": "integer",
+            "title": "J"
+          },
+          "region": {
+            "type": "integer",
+            "title": "Region"
+          },
+          "centroid": {
+            "$ref": "#/components/schemas/LatLonOut"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "n_values": {
+            "type": "integer",
+            "title": "N Values",
+            "default": 0
+          },
+          "events": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/HexbinEventOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Events"
+          },
+          "magnitude_totals": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Magnitude Totals"
+          },
+          "labels": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Labels"
+          },
+          "geometry": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geometry"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "face",
+          "i",
+          "j",
+          "region",
+          "centroid",
+          "count"
+        ],
+        "title": "HexbinCellOut"
+      },
+      "HexbinEventOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Categories"
+          },
+          "magnitude_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Magnitude Value"
+          },
+          "magnitude_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Magnitude Unit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "HexbinEventOut"
+      },
+      "HexbinEventsResponse": {
+        "properties": {
+          "f": {
+            "type": "integer",
+            "title": "F"
+          },
+          "events_total": {
+            "type": "integer",
+            "title": "Events Total"
+          },
+          "cells_returned": {
+            "type": "integer",
+            "title": "Cells Returned"
+          },
+          "cells": {
+            "items": {
+              "$ref": "#/components/schemas/HexbinCellOut"
+            },
+            "type": "array",
+            "title": "Cells"
+          }
+        },
+        "type": "object",
+        "required": [
+          "f",
+          "events_total",
+          "cells_returned",
+          "cells"
+        ],
+        "title": "HexbinEventsResponse"
+      },
+      "HexbinPointIn": {
+        "properties": {
+          "lat": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Lat"
+          },
+          "lon": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Lon"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lat",
+          "lon"
+        ],
+        "title": "HexbinPointIn"
+      },
+      "HexbinPointsRequest": {
+        "properties": {
+          "f": {
+            "type": "integer",
+            "enum": [
+              56,
+              80
+            ],
+            "title": "F",
+            "default": 80
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/HexbinPointIn"
+            },
+            "type": "array",
+            "maxItems": 20000,
+            "minItems": 1,
+            "title": "Points"
+          },
+          "aggregate": {
+            "type": "string",
+            "enum": [
+              "count",
+              "sum",
+              "mean",
+              "max"
+            ],
+            "title": "Aggregate",
+            "default": "count"
+          },
+          "include_geometry": {
+            "type": "boolean",
+            "title": "Include Geometry",
+            "default": false
+          },
+          "geojson": {
+            "type": "boolean",
+            "title": "Geojson",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "points"
+        ],
+        "title": "HexbinPointsRequest"
+      },
+      "HexbinPointsResponse": {
+        "properties": {
+          "f": {
+            "type": "integer",
+            "title": "F"
+          },
+          "aggregation": {
+            "type": "string",
+            "title": "Aggregation"
+          },
+          "points_total": {
+            "type": "integer",
+            "title": "Points Total"
+          },
+          "cells_returned": {
+            "type": "integer",
+            "title": "Cells Returned"
+          },
+          "cells": {
+            "items": {
+              "$ref": "#/components/schemas/HexbinCellOut"
+            },
+            "type": "array",
+            "title": "Cells"
+          }
+        },
+        "type": "object",
+        "required": [
+          "f",
+          "aggregation",
+          "points_total",
+          "cells_returned",
+          "cells"
+        ],
+        "title": "HexbinPointsResponse"
+      },
+      "LagCorrelationOut": {
+        "properties": {
+          "lag": {
+            "type": "integer",
+            "title": "Lag",
+            "description": "Positive = the anomaly precedes the event"
+          },
+          "r": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "R"
+          },
+          "p": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P"
+          },
+          "q": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Q",
+            "description": "FDR q-value (Benjamini-Hochberg)"
+          },
+          "n": {
+            "type": "integer",
+            "title": "N"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lag",
+          "r",
+          "p",
+          "n"
+        ],
+        "title": "LagCorrelationOut"
+      },
+      "LatLonOut": {
+        "properties": {
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lon": {
+            "type": "number",
+            "title": "Lon"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lat",
+          "lon"
+        ],
+        "title": "LatLonOut"
+      },
+      "MannKendallOut": {
+        "properties": {
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "s": {
+            "type": "integer",
+            "title": "S"
+          },
+          "z": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Z"
+          },
+          "p_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Value"
+          },
+          "trend": {
+            "type": "string",
+            "title": "Trend"
+          },
+          "alpha": {
+            "type": "number",
+            "title": "Alpha"
+          }
+        },
+        "type": "object",
+        "required": [
+          "n",
+          "s",
+          "z",
+          "p_value",
+          "trend",
+          "alpha"
+        ],
+        "title": "MannKendallOut"
+      },
+      "ObservationsResponse": {
+        "properties": {
+          "request": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Request"
+          },
+          "variables": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/VariableSeries"
+            },
+            "type": "object",
+            "title": "Variables"
+          }
+        },
+        "type": "object",
+        "required": [
+          "request",
+          "variables"
+        ],
+        "title": "ObservationsResponse"
+      },
+      "PointAnalysisRequest": {
+        "properties": {
+          "lat": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Lat",
+            "examples": [
+              -33.45
+            ]
+          },
+          "lon": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Lon",
+            "examples": [
+              -70.66
+            ]
+          },
+          "variables": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 40,
+            "minItems": 1,
+            "title": "Variables",
+            "examples": [
+              [
+                "T2M",
+                "T2M_MAX",
+                "PRECTOTCORR",
+                "RH2M"
+              ]
+            ]
+          },
+          "start": {
+            "type": "string",
+            "pattern": "^\\d{8}$",
+            "title": "Start",
+            "default": "20060101"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{8}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "community": {
+            "type": "string",
+            "enum": [
+              "RE",
+              "AG",
+              "SB"
+            ],
+            "title": "Community",
+            "default": "RE"
+          },
+          "site_elevation": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Site Elevation",
+            "description": "Meters; required if PSC is included"
+          },
+          "baseline_window_days": {
+            "type": "integer",
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Baseline Window Days",
+            "default": 7
+          },
+          "max_context_days": {
+            "type": "integer",
+            "maximum": 180.0,
+            "minimum": 7.0,
+            "title": "Max Context Days",
+            "default": 90
+          },
+          "max_lag_months": {
+            "type": "integer",
+            "maximum": 24.0,
+            "minimum": 0.0,
+            "title": "Max Lag Months",
+            "default": 6
+          },
+          "alpha": {
+            "type": "number",
+            "exclusiveMaximum": 0.5,
+            "exclusiveMinimum": 0.0,
+            "title": "Alpha",
+            "default": 0.05
+          },
+          "correlation_method": {
+            "type": "string",
+            "enum": [
+              "spearman",
+              "pearson"
+            ],
+            "title": "Correlation Method",
+            "default": "spearman"
+          },
+          "events": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EventFilter"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "If omitted, only trends are computed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lat",
+          "lon",
+          "variables"
+        ],
+        "title": "PointAnalysisRequest"
+      },
+      "PointAnalysisResponse": {
+        "properties": {
+          "request": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Request"
+          },
+          "trends": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/TrendOut"
+            },
+            "type": "object",
+            "title": "Trends"
+          },
+          "events_count": {
+            "type": "integer",
+            "title": "Events Count"
+          },
+          "event_summaries": {
+            "items": {
+              "$ref": "#/components/schemas/EventSummaryOut"
+            },
+            "type": "array",
+            "title": "Event Summaries"
+          },
+          "correlations": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CorrelationOut"
+            },
+            "type": "object",
+            "title": "Correlations"
+          }
+        },
+        "type": "object",
+        "required": [
+          "request",
+          "trends",
+          "events_count",
+          "event_summaries",
+          "correlations"
+        ],
+        "title": "PointAnalysisResponse"
+      },
+      "RegionEventOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "first_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Date"
+          },
+          "last_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Date"
+          },
+          "link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link"
+          },
+          "magnitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Magnitude"
+          },
+          "magnitude_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Magnitude Unit"
+          },
+          "n_geometries": {
+            "type": "integer",
+            "title": "N Geometries"
+          },
+          "is_primary": {
+            "type": "boolean",
+            "title": "Is Primary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "n_geometries",
+          "is_primary"
+        ],
+        "title": "RegionEventOut"
+      },
+      "RegionEventsResponse": {
+        "properties": {
+          "region": {
+            "$ref": "#/components/schemas/RegionOut"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/RegionEventOut"
+            },
+            "type": "array",
+            "title": "Events"
+          }
+        },
+        "type": "object",
+        "required": [
+          "region",
+          "count",
+          "events"
+        ],
+        "title": "RegionEventsResponse"
+      },
+      "RegionLatestItem": {
+        "properties": {
+          "variable": {
+            "type": "string",
+            "title": "Variable"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "quality": {
+            "type": "string",
+            "title": "Quality"
+          },
+          "valid_fraction": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Fraction"
+          },
+          "temporal_resolution": {
+            "type": "string",
+            "title": "Temporal Resolution"
+          }
+        },
+        "type": "object",
+        "required": [
+          "variable",
+          "source",
+          "name",
+          "date",
+          "quality",
+          "temporal_resolution"
+        ],
+        "title": "RegionLatestItem"
+      },
+      "RegionLatestResponse": {
+        "properties": {
+          "region": {
+            "$ref": "#/components/schemas/RegionOut"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "variables": {
+            "items": {
+              "$ref": "#/components/schemas/RegionLatestItem"
+            },
+            "type": "array",
+            "title": "Variables"
+          }
+        },
+        "type": "object",
+        "required": [
+          "region",
+          "count",
+          "variables"
+        ],
+        "title": "RegionLatestResponse"
+      },
+      "RegionObservationOut": {
+        "properties": {
+          "variable": {
+            "type": "string",
+            "title": "Variable"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "quality": {
+            "type": "string",
+            "title": "Quality"
+          },
+          "valid_fraction": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Fraction"
+          },
+          "temporal_resolution": {
+            "type": "string",
+            "title": "Temporal Resolution"
+          },
+          "metrics": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metrics"
+          },
+          "resolution_deg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolution Deg"
+          },
+          "method_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method Version"
+          },
+          "palette_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Palette Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "variable",
+          "name",
+          "date",
+          "quality",
+          "temporal_resolution"
+        ],
+        "title": "RegionObservationOut"
+      },
+      "RegionObservationsResponse": {
+        "properties": {
+          "region": {
+            "$ref": "#/components/schemas/RegionOut"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "observations": {
+            "items": {
+              "$ref": "#/components/schemas/RegionObservationOut"
+            },
+            "type": "array",
+            "title": "Observations"
+          }
+        },
+        "type": "object",
+        "required": [
+          "region",
+          "count",
+          "observations"
+        ],
+        "title": "RegionObservationsResponse"
+      },
+      "RegionOut": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lat"
+          },
+          "lon": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lon"
+          },
+          "area_km2": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area Km2"
+          },
+          "grid_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grid Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "slug",
+          "name"
+        ],
+        "title": "RegionOut"
+      },
+      "RegionRankingItem": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "anomaly": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anomaly"
+          },
+          "z": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Z"
+          },
+          "slope_per_year": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slope Per Year"
+          },
+          "r2": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "R2"
+          },
+          "n_months": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "N Months"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "RegionRankingItem"
+      },
+      "RegionRankingsResponse": {
+        "properties": {
+          "variable": {
+            "type": "string",
+            "title": "Variable"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "metric": {
+            "type": "string",
+            "title": "Metric"
+          },
+          "order": {
+            "type": "string",
+            "title": "Order"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "regions": {
+            "items": {
+              "$ref": "#/components/schemas/RegionRankingItem"
+            },
+            "type": "array",
+            "title": "Regions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "variable",
+          "source",
+          "metric",
+          "order",
+          "count",
+          "total",
+          "regions"
+        ],
+        "title": "RegionRankingsResponse"
+      },
+      "RegionSnapshotItem": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "anomaly": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anomaly"
+          },
+          "z": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Z"
+          },
+          "baseline": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "title": "RegionSnapshotItem"
+      },
+      "RegionSnapshotResponse": {
+        "properties": {
+          "variable": {
+            "type": "string",
+            "title": "Variable"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "metric": {
+            "type": "string",
+            "title": "Metric"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min"
+          },
+          "max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max"
+          },
+          "regions": {
+            "items": {
+              "$ref": "#/components/schemas/RegionSnapshotItem"
+            },
+            "type": "array",
+            "title": "Regions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "variable",
+          "source",
+          "date",
+          "metric",
+          "count",
+          "regions"
+        ],
+        "title": "RegionSnapshotResponse"
+      },
+      "RegionsResponse": {
+        "properties": {
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "regions": {
+            "items": {
+              "$ref": "#/components/schemas/RegionOut"
+            },
+            "type": "array",
+            "title": "Regions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "count",
+          "regions"
+        ],
+        "title": "RegionsResponse"
+      },
+      "SeriesPoint": {
+        "properties": {
+          "time": {
+            "type": "string",
+            "title": "Time"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "quality": {
+            "type": "string",
+            "title": "Quality",
+            "description": "ok | fill | missing | invalid"
+          }
+        },
+        "type": "object",
+        "required": [
+          "time",
+          "value",
+          "quality"
+        ],
+        "title": "SeriesPoint"
+      },
+      "TrendOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "n_months": {
+            "type": "integer",
+            "title": "N Months"
+          },
+          "seasonally_adjusted": {
+            "type": "boolean",
+            "title": "Seasonally Adjusted"
+          },
+          "mann_kendall": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MannKendallOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sen_slope_per_month": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sen Slope Per Month"
+          },
+          "sen_slope_per_year": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sen Slope Per Year"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "n_months",
+          "seasonally_adjusted",
+          "mann_kendall",
+          "sen_slope_per_month",
+          "sen_slope_per_year"
+        ],
+        "title": "TrendOut"
+      },
+      "TrendsResponse": {
+        "properties": {
+          "request": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Request"
+          },
+          "trends": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/TrendOut"
+            },
+            "type": "object",
+            "title": "Trends"
+          }
+        },
+        "type": "object",
+        "required": [
+          "request",
+          "trends"
+        ],
+        "title": "TrendsResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "VariableCoverageOut": {
+        "properties": {
+          "variable": {
+            "type": "string",
+            "title": "Variable"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          }
+        },
+        "type": "object",
+        "required": [
+          "variable",
+          "source",
+          "name",
+          "count"
+        ],
+        "title": "VariableCoverageOut"
+      },
+      "VariableInfo": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "section": {
+            "type": "string",
+            "title": "Section"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "temporal": {
+            "type": "string",
+            "title": "Temporal"
+          },
+          "coverage": {
+            "type": "string",
+            "title": "Coverage"
+          },
+          "definition": {
+            "type": "string",
+            "title": "Definition"
+          },
+          "disposition": {
+            "type": "string",
+            "title": "Disposition",
+            "description": "nucleo | descartado | (empty if not applicable)"
+          },
+          "usage": {
+            "type": "string",
+            "title": "Usage",
+            "description": "Original suggested use from the master CSV"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name",
+          "source",
+          "section",
+          "unit",
+          "temporal",
+          "coverage",
+          "definition",
+          "disposition",
+          "usage"
+        ],
+        "title": "VariableInfo"
+      },
+      "VariableSeries": {
+        "properties": {
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "time_standard": {
+            "type": "string",
+            "title": "Time Standard",
+            "description": "POWER provides LST (local solar time)"
+          },
+          "granularity": {
+            "type": "string",
+            "title": "Granularity"
+          },
+          "values": {
+            "items": {
+              "$ref": "#/components/schemas/SeriesPoint"
+            },
+            "type": "array",
+            "title": "Values"
+          }
+        },
+        "type": "object",
+        "required": [
+          "unit",
+          "time_standard",
+          "granularity",
+          "values"
+        ],
+        "title": "VariableSeries"
+      },
+      "WorldCellOut": {
+        "properties": {
+          "code": {
+            "type": "integer",
+            "title": "Code"
+          },
+          "face": {
+            "type": "integer",
+            "title": "Face"
+          },
+          "i": {
+            "type": "integer",
+            "title": "I"
+          },
+          "j": {
+            "type": "integer",
+            "title": "J"
+          },
+          "region": {
+            "type": "integer",
+            "title": "Region"
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lon": {
+            "type": "number",
+            "title": "Lon"
+          },
+          "biome": {
+            "type": "string",
+            "title": "Biome"
+          },
+          "biome_index": {
+            "type": "integer",
+            "title": "Biome Index"
+          },
+          "flags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Flags"
+          },
+          "elevation_m": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elevation M"
+          },
+          "rgb": {
+            "type": "string",
+            "title": "Rgb"
+          },
+          "lake_fraction": {
+            "type": "number",
+            "title": "Lake Fraction"
+          },
+          "water": {
+            "type": "boolean",
+            "title": "Water"
+          },
+          "area_km2": {
+            "type": "number",
+            "title": "Area Km2"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "face",
+          "i",
+          "j",
+          "region",
+          "lat",
+          "lon",
+          "biome",
+          "biome_index",
+          "flags",
+          "elevation_m",
+          "rgb",
+          "lake_fraction",
+          "water",
+          "area_km2"
+        ],
+        "title": "WorldCellOut"
+      },
+      "WorldCellsResponse": {
+        "properties": {
+          "f": {
+            "type": "integer",
+            "title": "F"
+          },
+          "total_cells": {
+            "type": "integer",
+            "title": "Total Cells"
+          },
+          "matched": {
+            "type": "integer",
+            "title": "Matched"
+          },
+          "returned": {
+            "type": "integer",
+            "title": "Returned"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "cells": {
+            "items": {
+              "$ref": "#/components/schemas/WorldCellOut"
+            },
+            "type": "array",
+            "title": "Cells"
+          }
+        },
+        "type": "object",
+        "required": [
+          "f",
+          "total_cells",
+          "matched",
+          "returned",
+          "offset",
+          "cells"
+        ],
+        "title": "WorldCellsResponse"
+      }
+    },
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key"
+      }
+    }
+  },
+  "security": [
+    {
+      "ApiKeyAuth": []
+    }
+  ],
+  "servers": [
+    {
+      "url": "/api/v1",
+      "description": "Canonical version"
+    }
+  ]
+}

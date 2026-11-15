@@ -19,9 +19,10 @@ image on the server and deploy.
 ## Jobs
 
 1. **Tests and image build** (`test`)
-   - Python 3.14, `pip install -r backend/requirements.txt`.
-   - `python -m compileall -q backend`.
+   - Python 3.14, `pip install -r requirements.txt`.
+   - `python -m compileall -q core api processor`.
    - `python -m unittest discover -s tests -v`.
+   - `python api/export_openapi.py --check` and `python api/build_api_docs.py --check`.
    - `docker build -t milanko-api:ci .` to validate the Dockerfile.
 
 2. **Deploy** (`deploy`)
@@ -30,8 +31,9 @@ image on the server and deploy.
    - Validates `DEPLOY_SSH_KEY` and `DEPLOY_KNOWN_HOSTS`; there is no
      `ssh-keyscan` fallback.
    - On the server: clones the public repository if needed, fetches, resets to
-     `origin/<branch>`, builds tags `<image>:<env>` and `<image>:<env>-<sha>`.
-   - Runs Alembic only when `backend/alembic.ini` exists.
+     `origin/<branch>`, builds tags `<image>:<env>` and `<image>:<env>-<sha>`
+     (the image is built on the VPS; no registry is involved).
+   - Runs Alembic only when `core/alembic.ini` exists (the databases are already at `c3d4e5f6a7b8`).
    - Recreates the container, waits for `DEPLOY_HEALTH_URL` and prunes dangling
      images.
    - Runs a public smoke test: `/api/v1/health` without a key and

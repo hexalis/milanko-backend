@@ -1,33 +1,37 @@
 # Milanko Backend
 
 Backend for the **Milanko** public deliverable (NASA Space Challenge): a FastAPI
-service and the ingestion jobs that keep the NASA POWER, EONET and GIBS data in
-PostgreSQL.
+service, the NASA ingestion workers and the shared data core.
 
-This repository is being built from scratch for the public deliverable. The
-current code is a **pipeline scaffold**: it exposes `/health` and `/ping`, runs
-the CI/CD workflow and validates the deployment before the full backend is
-migrated. The PostgreSQL data itself is already loaded in the three
-environments.
+## Repository layout
 
-## What is in the repository
+```text
+milanko-backend/
+├── api/                 # FastAPI routes, schemas and read services
+├── processor/           # NASA POWER/EONET/GIBS ingestion workers and event-region jobs
+├── core/                # SQLAlchemy models, Alembic migrations, NASA clients, world base
+├── data/catalog/        # Master variable catalog
+├── ops/                 # systemd timers and VPS/nginx helpers
+├── tests/               # Unit and API tests
+└── docs/                # Pipeline, infrastructure, data seed, API keys and architecture
+```
 
-| Path | Purpose |
-|---|---|
-| `backend/` | FastAPI application, requirements and database helpers |
-| `src/` | Reserved for the shared NASA data client library |
-| `tests/` | Unit tests |
-| `ops/systemd/` | Ingestion runner and timers |
-| `ops/vps/` | VPS bootstrap, nginx and API key helpers |
-| `docs/` | Pipeline, infrastructure, data seed and API key runbooks |
-| `Dockerfile` | Production image (Python 3.14, non-root) |
+The three Python packages have strict boundaries:
+
+- `api/` may import `core/`, never `processor/`.
+- `processor/` may import `core/`, never `api/`.
+- `core/` imports neither `api/` nor `processor/`.
+
+The API runs in its own container. The ingestion workers run as one-off
+containers from the same image through `systemd` timers. See
+[`docs/architecture.md`](docs/architecture.md).
 
 ## Run locally
 
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install -r backend/requirements.txt
-.venv/bin/uvicorn backend.app:app --reload --port 8000
+.venv/bin/pip install -r requirements.txt
+.venv/bin/uvicorn api.app:app --reload --port 8000
 ```
 
 Open <http://127.0.0.1:8000/docs>.
@@ -43,8 +47,7 @@ following routes are public:
 - `/api/v1/openapi.json`
 
 The key is enforced by nginx, not by FastAPI. See
-[`docs/api-keys.md`](docs/api-keys.md) for generation, rotation and the public
-frontend caveat.
+[`docs/api-keys.md`](docs/api-keys.md).
 
 ## Environments
 
@@ -66,6 +69,16 @@ because the public deliverable must include everything except the design system.
 
 See [`docs/pipelines.md`](docs/pipelines.md) for the workflow, required GitHub
 Environment variables/secrets and rollback.
+
+## Ingestion
+
+The systemd runner and the nine timers live in `ops/systemd/`. They run the same
+image as the API and call `python -m processor.ingest_power`,
+`processor.ingest_eonet` and `processor.ingest_gibs`.
+
+```bash
+sudo ops/systemd/install-all.sh
+```
 
 ## License
 

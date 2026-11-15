@@ -27,18 +27,23 @@ jobs:
         with:
           python-version: "3.14"
           cache: pip
-          cache-dependency-path: backend/requirements.txt
+          cache-dependency-path: requirements.txt
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r backend/requirements.txt
+          pip install -r requirements.txt
 
       - name: Compile
-        run: python -m compileall -q backend
+        run: python -m compileall -q core api processor
 
       - name: Run tests
         run: python -m unittest discover -s tests -v
+
+      - name: Check OpenAPI and reference
+        run: |
+          python api/export_openapi.py --check
+          python api/build_api_docs.py --check
 
       - name: Build image
         run: docker build -t milanko-api:ci .
@@ -96,7 +101,7 @@ jobs:
           HEALTH_TIMEOUT: ${{ vars.DEPLOY_HEALTH_TIMEOUT_SECONDS || 120 }}
           EXTRA_ARGS: ${{ vars.DEPLOY_EXTRA_RUN_ARGS }}
           USE_SUDO: ${{ vars.DEPLOY_USE_SUDO || 'false' }}
-          MIGRATE_COMMAND: ${{ vars.DEPLOY_MIGRATE_COMMAND || 'alembic -c backend/alembic.ini upgrade head' }}
+          MIGRATE_COMMAND: ${{ vars.DEPLOY_MIGRATE_COMMAND || 'alembic -c core/alembic.ini upgrade head' }}
         run: |
           set -euo pipefail
           : "${HOST:?DEPLOY_HOST is required}"
@@ -142,7 +147,7 @@ jobs:
           echo "==> building $IMAGE_TAG from $SHA"
           $SUDO docker build -t "$IMAGE_TAG" -t "${IMAGE_TAG}-${SHA}" -f "$DOCKERFILE" "$CONTEXT"
 
-          if [ -n "$MIGRATE_COMMAND" ] && [ -f backend/alembic.ini ]; then
+          if [ -n "$MIGRATE_COMMAND" ] && [ -f core/alembic.ini ]; then
             echo "==> running migrations: $MIGRATE_COMMAND"
             $SUDO docker run --rm "${NETWORK_ARGS[@]}" "${ENV_ARGS[@]}" "$IMAGE_TAG" sh -c "$MIGRATE_COMMAND"
           else

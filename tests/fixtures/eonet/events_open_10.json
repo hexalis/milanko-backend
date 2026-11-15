@@ -1,0 +1,411 @@
+{
+	"title": "EONET Events",
+	"description": "Natural events from EONET.",
+	"link": "https://eonet.gsfc.nasa.gov/api/v3/events",
+	"events": [
+		{
+			"id": "EONET_25310",
+			"title": "Prescribed Fire Newman Piles RX, Coconino, Arizona",
+            "description": null,
+			"link": "https://eonet.gsfc.nasa.gov/api/v3/events/EONET_25310",
+			"closed": null,
+				"categories": [
+					{
+					"id": "wildfires",
+					"title": "Wildfires"
+				}
+
+	    				],
+    			"sources": [
+					{
+					"id": "IRWIN",
+					"url": "https://irwin.doi.gov/observer/incidents/2026-AZCOF-001566"
+				}
+
+						
+			],
+					"geometry": [
+					{
+							"magnitudeValue": 751.00,
+					"magnitudeUnit": "acres",
+					"date": "2026-10-14T10:42:00Z",
+					"type": "Point", 
+							"coordinates": [ -111.65, 35.016667 ]
+							}
+
+						
+			]
+		},
+
+			{
+			"id": "EONET_25290",
+			"title": "Hurricane Trudy",
+            "description": null,
+			"link": "https://eonet.gsfc.nasa.gov/api/v3/events/EONET_25290",
+			"closed": null,
+				"categories": [
+					{
+					"id": "severeStorms",
+					"title": "Severe Storms"
+				}
+
+	    				],
+    			"sources": [
+					{
+					"id": "JTWC",
+					"url": "https://www.metoc.navy.mil/jtwc/products/ep2126.tcw"
+				}
+
+						
+			],
+					"geometry": [
+					{
+							"magnitudeValue": 35.00,
+					"magnitudeUnit": "kts",
+					"date": "2026-10-13T18:00:00Z",
+					"type": "Point", 
+							"coordinates": [ -95.9, 10.3 ]
+							},
+
+							{
+							"magnitudeValue": 35.00,
+					"magnitudeUnit": "kts",
+					"date": "2026-10-14T00:00:00Z",
+					"type": "Point", 
+							"coordinates": [ -96.9, 10.5 ]
+							},
+
+							{
+							"magnitudeValue": 40.00,
+					"magnitudeUnit": "kts",
+					"date": "2026-10-14T06:00:00Z",
+					"type": "Point", 
+							"coordinates": [ -98.6, 10.8 ]
+							},
+
+							{
+							"magnitudeValue": 45.00,
+					"magnitudeUnit": "kts",
+					"date": "2026-10-14T12:00:00Z",
+					"type": "Point", 
+							"coordinates": [ -99.2, 11.3 ]
+							},
+
+							{
+							"magnitudeValue": 55.00,
+					"magnitudeUnit": "kts",
+					"date": "2026-10-14T18:00:00Z",
+					"type": "Point", 
+							"coordinates": [ -99.7, 11.7 ]
+							},
+
+							{
+							"magnitudeValue": 55.00,
+					"magnitudeUnit": "kts",
+					"date": "2026-10-15T00:00:00Z",
+					"type": "Point", 
+							"coordinates": [ -100.5, 12.1 ]
+							},
+
+							{
+							"magnitudeValue": 65.00,
+					"magnitudeUnit": "kts",
+					"date": "2026-10-15T06:00:00Z",
+					"type": "Point", 
+							"coordinates": [ -101.2, 12.6 ]
+							},
+
+							{
+							"magnitudeValue": 80.00,
+					"magnitudeUnit": "kts",
+					"date": "2026-10-15T12:00:00Z",
+					"type": "Point", 
+							"coordinates": [ -101.6, 12.9 ]
+							},
+
+							{
+							"magnitudeValue": 80.00,
+					"magnitudeUnit": "kts",
+					"date": "2026-10-15T18:00:00Z",
+					"type": "Point", 
+							"coordinates": [ -101.6, 13.5 ]
+							}
+
+						
+			]
+		},
+
+			{
+			"id": "EONET_25311",
+			"title": "Prescribed Fire Jane 102 RX, Harney, Oregon",
+            "description": null,
+			"link": "https://eonet.gsfc.nasa.gov/api/v3/events/EONET_25311",
+			"closed": null,
+				"categories": [
+					{
+					"id": "wildfires",
+					"title": "Wildfires"
+				}
+
+	    				],
+    			"sources": [
+					{
+					"id": "IRWIN",
+					"url": "https://irwin.doi.gov/observer/incidents/2026-ORMAF-002746"
+				}
+
+						
+			],
+					"geometry": [
+					{
+							"magnitudeValue": 3000.00,
+					"magnitudeUnit": "acres",
+					"date": "2026-10-13T10:24:00Z",
+					"type": "Point", 
+							"coordinates": [ -118.766432, 44.025847 ]
+							}
+
+						
+			]
+		},
+
+			{
+			"id": "EONET_25312",
+			"title": "Prescribed Fire SRF 2026 Rx Implementation, Humboldt, California",
+            "description": null,
+			"link": "https://eonet.gsfc.nasa.gov/api/v3/events/EONET_25312",
+			"closed": null,
+				"categories": [
+					{
+					"id": "wildfires",
+					"title": "Wildfires"
+				}
+
+	    				],
+    			"sources": [
+					{
+					"id": "IRWIN",
+					"url": "https://irwin.doi.gov/observer/incidents/2026-CASRF-000982"
+				}
+
+						
+			],
+					"geometry": [
+					{
+							"magnitudeValue": 500.00,
+					"magnitudeUnit": "acres",
+					"date": "2026-10-12T16:27:00Z",
+					"type": "Point", 
+							"coordinates": [ -123.540573, 41.300685 ]
+							}
+
+						
+			]
+		},
+
+			{
+			"id": "EONET_25238",
+			"title": "Wildfire Buckhorn 2, Cassia, Idaho",
+            "description": "12 Miles S from Murtaugh, ID",
+			"link": "https://eonet.gsfc.nasa.gov/api/v3/events/EONET_25238",
+			"closed": null,
+				"categories": [
+					{
+					"id": "wildfires",
+					"title": "Wildfires"
+				}
+
+	    				],
+    			"sources": [
+					{
+					"id": "IRWIN",
+					"url": "https://irwin.doi.gov/observer/incidents/2026-IDTFD-000268"
+				}
+
+						
+			],
+					"geometry": [
+					{
+							"magnitudeValue": 2000.00,
+					"magnitudeUnit": "acres",
+					"date": "2026-10-10T14:58:00Z",
+					"type": "Point", 
+							"coordinates": [ -114.102967, 42.337217 ]
+							}
+
+						
+			]
+		},
+
+			{
+			"id": "EONET_25233",
+			"title": "Wildfire PK, Sheridan, Wyoming",
+            "description": "10 Miles W from Sheridan, WY",
+			"link": "https://eonet.gsfc.nasa.gov/api/v3/events/EONET_25233",
+			"closed": null,
+				"categories": [
+					{
+					"id": "wildfires",
+					"title": "Wildfires"
+				}
+
+	    				],
+    			"sources": [
+					{
+					"id": "IRWIN",
+					"url": "https://irwin.doi.gov/observer/incidents/2026-WYSHX-000391"
+				}
+
+						
+			],
+					"geometry": [
+					{
+							"magnitudeValue": 1645.00,
+					"magnitudeUnit": "acres",
+					"date": "2026-10-09T19:26:00Z",
+					"type": "Point", 
+							"coordinates": [ -107.2199, 44.7516 ]
+							}
+
+						
+			]
+		},
+
+			{
+			"id": "EONET_25232",
+			"title": "Wildfire CYRUS, Kern, California",
+            "description": "4 Miles SE from KERNVILLE, CA",
+			"link": "https://eonet.gsfc.nasa.gov/api/v3/events/EONET_25232",
+			"closed": null,
+				"categories": [
+					{
+					"id": "wildfires",
+					"title": "Wildfires"
+				}
+
+	    				],
+    			"sources": [
+					{
+					"id": "IRWIN",
+					"url": "https://irwin.doi.gov/observer/incidents/2026-CASQF-001695"
+				}
+
+						
+			],
+					"geometry": [
+					{
+							"magnitudeValue": 543.00,
+					"magnitudeUnit": "acres",
+					"date": "2026-10-09T17:15:00Z",
+					"type": "Point", 
+							"coordinates": [ -118.418, 35.69875 ]
+							}
+
+						
+			]
+		},
+
+			{
+			"id": "EONET_25234",
+			"title": "Prescribed Fire Bridger Trail Unit - KPERP Rx NKRD CY26, Coconino, Arizona",
+            "description": null,
+			"link": "https://eonet.gsfc.nasa.gov/api/v3/events/EONET_25234",
+			"closed": null,
+				"categories": [
+					{
+					"id": "wildfires",
+					"title": "Wildfires"
+				}
+
+	    				],
+    			"sources": [
+					{
+					"id": "IRWIN",
+					"url": "https://irwin.doi.gov/observer/incidents/2026-AZKNF-001107"
+				}
+
+						
+			],
+					"geometry": [
+					{
+							"magnitudeValue": 5019.00,
+					"magnitudeUnit": "acres",
+					"date": "2026-10-09T11:49:00Z",
+					"type": "Point", 
+							"coordinates": [ -112.185988, 36.73752 ]
+							}
+
+						
+			]
+		},
+
+			{
+			"id": "EONET_25268",
+			"title": "Iceberg B52",
+            "description": null,
+			"link": "https://eonet.gsfc.nasa.gov/api/v3/events/EONET_25268",
+			"closed": null,
+				"categories": [
+					{
+					"id": "seaLakeIce",
+					"title": "Sea and Lake Ice"
+				}
+
+	    				],
+    			"sources": [
+					{
+					"id": "NATICE",
+					"url": "https://usicecenter.gov/pub/Iceberg_Tabular.csv"
+				}
+
+						
+			],
+					"geometry": [
+					{
+							"magnitudeValue": 48.88,
+					"magnitudeUnit": "NM^2",
+					"date": "2026-10-09T00:00:00Z",
+					"type": "Point", 
+							"coordinates": [ -130.24, -74.4 ]
+							}
+
+						
+			]
+		},
+
+			{
+			"id": "EONET_25309",
+			"title": "Wildfire Craig Lake 1, Baraga, Michigan",
+            "description": "7 Miles NW from Michigamme, MI",
+			"link": "https://eonet.gsfc.nasa.gov/api/v3/events/EONET_25309",
+			"closed": null,
+				"categories": [
+					{
+					"id": "wildfires",
+					"title": "Wildfires"
+				}
+
+	    				],
+    			"sources": [
+					{
+					"id": "IRWIN",
+					"url": "https://irwin.doi.gov/observer/incidents/2026-MIMIS-070006"
+				}
+
+						
+			],
+					"geometry": [
+					{
+							"magnitudeValue": 604.00,
+					"magnitudeUnit": "acres",
+					"date": "2026-10-08T18:05:00Z",
+					"type": "Point", 
+							"coordinates": [ -88.16960353, 46.63331342 ]
+							}
+
+						
+			]
+		}
+
+		]
+}

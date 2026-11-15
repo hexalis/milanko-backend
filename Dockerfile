@@ -7,12 +7,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-COPY backend/requirements.txt backend/requirements.txt
+COPY requirements.txt requirements.txt
 RUN pip install --no-cache-dir --upgrade pip \
- && pip install --no-cache-dir -r backend/requirements.txt
+ && pip install --no-cache-dir -r requirements.txt
 
-COPY backend backend
-COPY src src
+COPY core core
+COPY api api
+COPY processor processor
+COPY data/catalog data/catalog
 
 RUN useradd --create-home --uid 10001 appuser \
  && mkdir -p /app/data/cache \
@@ -24,4 +26,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')" || exit 1
 
-CMD ["uvicorn", "backend.app:app", "--host", "0.0.0.0", "--port", "8000", "--root-path", "/api/v1"]
+CMD ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8000", "--root-path", "/api/v1"]

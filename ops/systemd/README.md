@@ -22,8 +22,8 @@ sudo ops/systemd/install-all.sh
 systemctl list-timers 'milanko-ingest-*' --all --no-pager
 ```
 
-The ingestion modules (`backend.ingest_power`, `backend.ingest_eonet` and
-`backend.ingest_gibs`) are migrated from the POC. Install the timers once those
+The ingestion modules (`processor.ingest_power`, `processor.ingest_eonet` and
+`processor.ingest_gibs`) are migrated from the POC. Install the timers once those
 modules exist in the image; until then they will fail with a clear Python
 `ModuleNotFoundError`.
 

@@ -1,0 +1,9 @@
+# Persistence migrations
+
+Alembic runs from the image root:
+
+```bash
+alembic -c core/alembic.ini upgrade head
+```
+
+The database URL comes from `DATABASE_URL`; it is not stored in `alembic.ini`.
