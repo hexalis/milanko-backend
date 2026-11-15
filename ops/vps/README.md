@@ -14,8 +14,7 @@ Order of operations for a fresh host:
 6. Obtain the Let's Encrypt certificate (see
    [`../../docs/infrastructure.md`](../../docs/infrastructure.md)).
 7. Configure the GitHub Environments and push `develop`.
-8. Install the ingestion timers once the ingestion modules exist:
-   `sudo ops/systemd/install-all.sh`.
+8. Install the ingestion timers: `sudo ops/systemd/install-all.sh`.
 
 Do not commit real API keys, database passwords or `.env` files. The nginx
 snippets and TSV files live only on the VPS.

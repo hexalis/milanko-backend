@@ -23,9 +23,8 @@ systemctl list-timers 'milanko-ingest-*' --all --no-pager
 ```
 
 The ingestion modules (`processor.ingest_power`, `processor.ingest_eonet` and
-`processor.ingest_gibs`) are migrated from the POC. Install the timers once those
-modules exist in the image; until then they will fail with a clear Python
-`ModuleNotFoundError`.
+`processor.ingest_gibs`) are part of the API image. The timers run that image
+as one-off containers on the `milanko` Docker network.
 
 ## Manual run
 
