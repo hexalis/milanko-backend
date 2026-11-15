@@ -1,0 +1,4 @@
+# Copy this file to /etc/milanko/api-keys-<environment>.tsv (mode 600).
+# Format: client<TAB>key. One line per client.
+public-web	mk_develop_public_replace_me_with_openssl_rand_hex_32
+internal-smoke	mk_develop_internal_replace_me_with_openssl_rand_hex_32

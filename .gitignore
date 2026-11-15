@@ -218,3 +218,12 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Milanko operational secrets and artifacts
+*.dump
+*.pem
+*.key
+ops/vps/nginx/*.tsv
+.env.*
+!.env.example
+!ops/vps/nginx/api-keys.example.tsv

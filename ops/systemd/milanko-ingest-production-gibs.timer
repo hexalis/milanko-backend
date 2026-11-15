@@ -1,0 +1,12 @@
+[Unit]
+Description=Production gibs incremental ingest
+Documentation=https://github.com/hexalis/milanko-backend
+
+[Timer]
+OnCalendar=*-*-* 11:30:00 UTC
+RandomizedDelaySec=15m
+Persistent=true
+Unit=milanko-ingest@gibs-production.service
+
+[Install]
+WantedBy=timers.target

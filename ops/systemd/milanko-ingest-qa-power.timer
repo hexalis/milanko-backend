@@ -1,0 +1,12 @@
+[Unit]
+Description=QA power incremental ingest
+Documentation=https://github.com/hexalis/milanko-backend
+
+[Timer]
+OnCalendar=*-*-* 06:15:00 UTC
+RandomizedDelaySec=15m
+Persistent=true
+Unit=milanko-ingest@power-qa.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,12 @@
+[Unit]
+Description=Production eonet incremental ingest
+Documentation=https://github.com/hexalis/milanko-backend
+
+[Timer]
+OnCalendar=*-*-* 10:15:00 UTC
+RandomizedDelaySec=15m
+Persistent=true
+Unit=milanko-ingest@eonet-production.service
+
+[Install]
+WantedBy=timers.target

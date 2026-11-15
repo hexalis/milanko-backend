@@ -1,0 +1,12 @@
+[Unit]
+Description=Daily power incremental ingest
+Documentation=https://github.com/hexalis/milanko-backend
+
+[Timer]
+OnCalendar=*-*-* 03:15:00 UTC
+RandomizedDelaySec=15m
+Persistent=true
+Unit=milanko-ingest@power.service
+
+[Install]
+WantedBy=timers.target
