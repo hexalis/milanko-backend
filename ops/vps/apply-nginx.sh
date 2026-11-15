@@ -14,13 +14,15 @@ install -m 644 "$nginx_dir/milanko-api.conf" /etc/nginx/conf.d/milanko-api.conf
 install -m 644 "$nginx_dir/snippets/milanko-api-proxy.conf" /etc/nginx/snippets/milanko-api-proxy.conf
 install -m 644 "$nginx_dir/snippets/milanko-api-errors.conf" /etc/nginx/snippets/milanko-api-errors.conf
 
-"$nginx_dir/cloudflare-realip.sh"
+"$nginx_dir/cloudflare-realip.sh" --no-reload
 
 for env in develop qa production; do
   if [ -r "/etc/milanko/api-keys-${env}.tsv" ]; then
-    "$nginx_dir/render-api-keys.sh" "$env"
+    "$nginx_dir/render-api-keys.sh" "$env" --no-reload
   else
-    echo "WARNING: /etc/milanko/api-keys-${env}.tsv is missing; create it before enabling this environment" >&2
+    echo "WARNING: /etc/milanko/api-keys-${env}.tsv is missing; creating an empty key map" >&2
+    printf '# no keys configured for %s\n' "$env" > "/etc/nginx/snippets/milanko-api-keys-${env}.conf"
+    chmod 600 "/etc/nginx/snippets/milanko-api-keys-${env}.conf"
   fi
 done
 

@@ -23,6 +23,10 @@ trap 'rm -f "$tmp"' EXIT
 } > "$tmp"
 
 install -m 600 "$tmp" "$dest"
-nginx -t
-systemctl reload nginx
-echo "API keys reloaded for $env"
+if [ "${2:-}" != "--no-reload" ]; then
+  nginx -t
+  systemctl reload nginx
+  echo "API keys reloaded for $env"
+else
+  echo "API keys written for $env (reload deferred)"
+fi

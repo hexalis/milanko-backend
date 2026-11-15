@@ -14,6 +14,10 @@ trap 'rm -f "$tmp"' EXIT
 } > "$tmp"
 
 install -m 644 "$tmp" "$dest"
-nginx -t
-systemctl reload nginx
-echo "Cloudflare real-IP ranges updated"
+if [ "${1:-}" != "--no-reload" ]; then
+  nginx -t
+  systemctl reload nginx
+  echo "Cloudflare real-IP ranges updated"
+else
+  echo "Cloudflare real-IP ranges written (reload deferred)"
+fi
