@@ -112,7 +112,7 @@ Create these proxied `A` records in Cloudflare:
 
 Create `develop`, `qa` and `production` in `hexalis/milanko-backend`, add the
 secrets and variables listed in [`pipelines.md`](pipelines.md), and restrict
-production to `main` with required reviewers.
+production to `main`. No reviewers are required; pushes to `main` deploy automatically.
 
 ## Firewall
 

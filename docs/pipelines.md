@@ -45,7 +45,7 @@ image on the server and deploy.
 ## Required GitHub Environment configuration
 
 Create the environments `develop`, `qa` and `production`. Restrict each
-environment to its branch and require reviewers for `production`.
+environment to its branch. Production deploys automatically; there is no reviewer gate.
 
 ### Secrets
 

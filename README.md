@@ -57,8 +57,9 @@ The key is enforced by nginx, not by FastAPI. See
 | qa | `qa` | `https://qa-milanko.hexalis.org` | `milanko_qa` |
 | production | `main` | `https://milanko.hexalis.org` | `milanko_production` |
 
-Promotion is `develop` → `qa` → `main` by fast-forward. Production deploys after
-approval of the `production` GitHub Environment.
+Promotion is `develop` → `qa` → `main` by fast-forward. Pushes to `main`
+deploy production automatically; the `production` Environment only enforces the
+`main` branch policy.
 
 ## Pipelines
 

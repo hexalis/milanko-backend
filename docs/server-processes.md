@@ -503,7 +503,7 @@ current host uses the distribution default.
    deploy.
 2. Verify develop (`/health`, `/regions`, `/events/stats`, `/ping` with key).
 3. Fast-forward `qa` and repeat the checks.
-4. Fast-forward `main`; approve the `production` Environment deployment.
+4. Fast-forward `main`; the pipeline deploys production automatically (no reviewer gate).
 5. After changing `ops/systemd/`, re-run `sudo ops/systemd/install-all.sh` on
    the VPS.
 6. Do not run a full historical backfill during a deploy or during another
