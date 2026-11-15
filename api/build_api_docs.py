@@ -156,7 +156,7 @@ def build() -> str:
             groups.setdefault(tag, []).append((method, path, operation))
 
     lines = [
-        "# API reference — Earth Trend Detective",
+        "# API reference — Milanko API",
         "",
         "> Generated from `docs/03-backend/openapi.json` (OpenAPI 3.1). Do not edit by hand:",
         "> change the code or the schemas and re-run `api/build_api_docs.py`.",
